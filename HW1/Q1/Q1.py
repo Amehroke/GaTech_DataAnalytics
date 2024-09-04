@@ -2,6 +2,8 @@ import http.client
 import json
 import csv
 import requests
+import sys
+
 
 #############################################################################################################################
 # cse6242 
@@ -61,9 +63,10 @@ class Graph:
         add a tuple (id, name) representing a node to self.nodes if it does not already exist
         The graph should not contain any duplicate nodes
         """
-        self.nodes.append((id, name))
+        name = name.replace(',', '')
+        if (id, name) not in self.nodes:
+                self.nodes.append((id, name))
 
-        return NotImplemented
 
 
     def add_edge(self, source: str, target: str) -> None:
@@ -73,21 +76,28 @@ class Graph:
         Where 'source' is the id of the source node and 'target' is the id of the target node
         e.g., for two nodes with ids 'a' and 'b' respectively, add the tuple ('a', 'b') to self.edges
         """
-        return NotImplemented
-
+        if source != target:
+            edge = (source, target)
+            edge_reversed = (target, source)
+            
+            if edge not in self.edges and edge_reversed not in self.edges:
+                self.edges.append(edge)
 
     def total_nodes(self) -> int:
         """
         Returns an integer value for the total number of nodes in the graph
         """
-        return NotImplemented
+        return len(self.nodes)
 
 
     def total_edges(self) -> int:
         """
         Returns an integer value for the total number of edges in the graph
         """
-        return NotImplemented
+        edges = len(self.edges)
+        print(edges)
+        
+        return edges
 
 
     def max_degree_nodes(self) -> dict:
@@ -98,7 +108,22 @@ class Graph:
         e.g. {'a': 8}
         or {'a': 22, 'b': 22}
         """
-        return NotImplemented
+        degrees = {}
+        
+        for edge in self.edges:
+            source, target = edge
+            degrees[source] = degrees.get(source, 0) + 1
+            degrees[target] = degrees.get(target, 0) + 1
+            
+        max_degree = max(degrees.values())
+        
+        max_degree_nodes = {}
+        
+        for node, degree in degrees.items():
+            if degree == max_degree:
+                max_degree_nodes[node] = degree
+                
+        return max_degree_nodes
 
 
     def print_nodes(self):
@@ -186,27 +211,22 @@ class  TMDBAPIUtils:
                 The result of the API call will include many more fields for each cast member.
         """
 
-        base_url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits"
-        
-        headers = {
-            "accept": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+        base_url = f"https://api.themoviedb.org/3/movie/{movie_id}/credits?api_key={self.api_key}"
         
         try: 
-            response = requests.get(base_url, headers=headers)
+            response = requests.get(base_url)
             
             if response.status_code == 200:
                 cast = response.json()['cast']
                 
+                if limit:
+                    cast = cast[:limit]
+                    
                 if exclude_ids:
                     for id in exclude_ids:
                         for actor in cast:
                             if actor['id'] == id:
                                 cast.remove(actor)
-                
-                if limit:
-                    cast = cast[:limit]
                     
                 return cast
             
@@ -232,7 +252,38 @@ class  TMDBAPIUtils:
                 'title': 'Long, Stock and Two Smoking Barrels' # the title (not original title) of the credit
                 'vote_avg': 5.0 # the float value of the vote average value for the credit}, ... ]
         """
-        return NotImplemented
+
+        base_url = f"https://api.themoviedb.org/3/person/{person_id}/movie_credits?api_key={self.api_key}"
+        
+        try: 
+            response = requests.get(base_url)
+            if response.status_code == 200: 
+                credits = response.json().get('cast', [])
+
+                movie_dict = []
+                
+                for credit in credits: 
+                        dict = {  'id': credit['id'], 
+                                    'title': credit['title'], 
+                                    'vote_avg': credit['vote_average']
+                                }
+                        
+                        movie_dict.append(dict)
+                
+                if vote_avg_threshold: 
+                    filtered = []
+                    for movie in movie_dict:
+                        if movie['vote_avg'] >= vote_avg_threshold:
+                            filtered.append(movie)
+                    
+                    return filtered
+                
+        except:
+            print("Error in get_movie_credits_for_person")
+            return
+            
+
+        return movie_dict
 
 
 #############################################################################################################################
@@ -337,7 +388,8 @@ def return_name()->str:
     e.g., gburdell3
     Do not return your 9 digit GTId
     """
-    return NotImplemented
+    name = "Amehroke3"
+    return name
 
 
 # You should modify __main__ as you see fit to build/test your graph using  the TMDBAPIUtils & Graph classes.
@@ -345,17 +397,49 @@ def return_name()->str:
 
 if __name__ == "__main__":
     
+    tmdb_api_utils = TMDBAPIUtils(api_key='a8849c10dbe779acadac20ec9aa61206')
 
-    # graph = Graph()
-    # graph.add_node(id='2975', name='Laurence Fishburne')
-    tmdb_api_utils = TMDBAPIUtils(api_key='eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhODg0OWMxMGRiZTc3OWFjYWRhYzIwZWM5YWE2MTIwNiIsIm5iZiI6MTcyNDcyNjUxNS45NzE4MzQsInN1YiI6IjY2Y2I4YTQ4OTQ3NmQ0ZmRlNzBmOGQwZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.KZm_E6Fuuz9jP1nohBSPt_QcOpcbqW0eZwv0vrQ4FBY')
-    cast = tmdb_api_utils.get_movie_cast(movie_id='603', limit=3, exclude_ids=[6384])
-    print(cast)
     # call functions or place code here to build graph (graph building code not graded)
     # Suggestion: code should contain steps outlined above in BUILD CO-ACTOR NETWORK
+    
+    graph = Graph()
+    graph.add_node(id='2975', name='Laurence Fishburne')
+    new_nodes = []  
+    
+    fishburne_credits = tmdb_api_utils.get_movie_credits_for_person(person_id='2975', vote_avg_threshold=8.0)
+    
+    for credit in fishburne_credits: 
+        cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
 
-    # graph.write_edges_file()
-    # graph.write_nodes_file()
+        for actor in cast_members:
+            
+            graph.add_node(id=str(actor['id']), name=actor['name'])
+            graph.add_edge(source='2975', target=str(actor['id']))
+            new_nodes.append(str(actor['id']))
+   
+    for i in range(2):
+        current_nodes = new_nodes.copy()
+        new_nodes = []
+
+        for curr_actor in current_nodes:
+            actor_credits = tmdb_api_utils.get_movie_credits_for_person(person_id=curr_actor, vote_avg_threshold=8.0)
+
+            for credit in actor_credits:
+                cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
+
+                for new_actor in cast_members:
+                    new_actor_id = str(new_actor['id'])
+
+                    if new_actor_id not in graph.nodes:
+                        graph.add_node(id=new_actor_id, name=new_actor['name'])
+                        new_nodes.append(new_actor_id)
+
+                    graph.add_edge(source=curr_actor, target=new_actor_id)
+
+    graph.write_edges_file()
+    graph.write_nodes_file()
+    print("\nGraph build complete!")
+
 
     # If you have already built & written out your graph, you could read in your nodes & edges files
     # to perform testing on your graph.
