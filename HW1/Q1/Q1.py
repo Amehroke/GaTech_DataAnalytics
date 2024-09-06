@@ -2,7 +2,7 @@ import http.client
 import json
 import csv
 import requests
-import sys
+
 
 
 #############################################################################################################################
@@ -95,7 +95,6 @@ class Graph:
         Returns an integer value for the total number of edges in the graph
         """
         edges = len(self.edges)
-        print(edges)
         
         return edges
 
@@ -399,48 +398,48 @@ if __name__ == "__main__":
     
     tmdb_api_utils = TMDBAPIUtils(api_key='a8849c10dbe779acadac20ec9aa61206')
 
-    # call functions or place code here to build graph (graph building code not graded)
-    # Suggestion: code should contain steps outlined above in BUILD CO-ACTOR NETWORK
+    # # call functions or place code here to build graph (graph building code not graded)
+    # # Suggestion: code should contain steps outlined above in BUILD CO-ACTOR NETWORK
     
-    graph = Graph()
-    graph.add_node(id='2975', name='Laurence Fishburne')
-    new_nodes = []  
+    # graph = Graph()
+    # graph.add_node(id='2975', name='Laurence Fishburne')
+    # new_nodes = []  
     
-    fishburne_credits = tmdb_api_utils.get_movie_credits_for_person(person_id='2975', vote_avg_threshold=8.0)
+    # fishburne_credits = tmdb_api_utils.get_movie_credits_for_person(person_id='2975', vote_avg_threshold=8.0)
     
-    for credit in fishburne_credits: 
-        cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
+    # for credit in fishburne_credits: 
+    #     cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
 
-        for actor in cast_members:
+    #     for actor in cast_members:
             
-            graph.add_node(id=str(actor['id']), name=actor['name'])
-            graph.add_edge(source='2975', target=str(actor['id']))
-            new_nodes.append(str(actor['id']))
+    #         graph.add_node(id=str(actor['id']), name=actor['name'])
+    #         graph.add_edge(source='2975', target=str(actor['id']))
+    #         new_nodes.append(str(actor['id']))
    
-    for i in range(2):
-        current_nodes = new_nodes.copy()
-        new_nodes = []
+    # for i in range(2):
+    #     current_nodes = new_nodes.copy()
+    #     new_nodes = []
 
-        for curr_actor in current_nodes:
-            actor_credits = tmdb_api_utils.get_movie_credits_for_person(person_id=curr_actor, vote_avg_threshold=8.0)
+    #     for curr_actor in current_nodes:
+    #         actor_credits = tmdb_api_utils.get_movie_credits_for_person(person_id=curr_actor, vote_avg_threshold=8.0)
 
-            for credit in actor_credits:
-                cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
+    #         for credit in actor_credits:
+    #             cast_members = tmdb_api_utils.get_movie_cast(credit['id'], 3)
 
-                for new_actor in cast_members:
-                    new_actor_id = str(new_actor['id'])
+    #             for new_actor in cast_members:
+    #                 new_actor_id = str(new_actor['id'])
 
-                    if new_actor_id not in graph.nodes:
-                        graph.add_node(id=new_actor_id, name=new_actor['name'])
-                        new_nodes.append(new_actor_id)
+    #                 if new_actor_id not in graph.nodes:
+    #                     graph.add_node(id=new_actor_id, name=new_actor['name'])
+    #                     new_nodes.append(new_actor_id)
 
-                    graph.add_edge(source=curr_actor, target=new_actor_id)
+    #                 graph.add_edge(source=curr_actor, target=new_actor_id)
 
-    graph.write_edges_file()
-    graph.write_nodes_file()
-    print("\nGraph build complete!")
+    # graph.write_edges_file()
+    # graph.write_nodes_file()
+    # print("\nGraph build complete!")
 
 
     # If you have already built & written out your graph, you could read in your nodes & edges files
     # to perform testing on your graph.
-    # graph = Graph(with_edges_file="edges.csv", with_nodes_file="nodes.csv")
+    graph = Graph(with_edges_file="HW1/Q1/edges.csv", with_nodes_file="HW1/Q1/edges.csv")
