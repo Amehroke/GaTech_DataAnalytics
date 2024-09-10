@@ -7,7 +7,7 @@
   <style>    
     /* Define css rules here */
   </style>
-<title></title>
+<title>wildlife trafficking incidents per species (2015 to 2023)</title>
 </head>
 
 <body>
@@ -19,21 +19,25 @@
 
   <script>
     // define the dimensions and margins for the graph
-    var margin;
-    var width;
-    var height;
+    var margin = {top: 50, right: 20, bottom: 50, left: 100};
+    var width = 900 - margin.left - margin.right;
+    var height = 400 - margin.top - margin.bottom;  
 
 
     // create scales x & y for X and Y axis and set their ranges
-    var x;
-    var y;
+    var x = d3.scaleLinear().range([0, width]);
+    var y = d3.scaleBand().range([height, 0]).padding(0.3);
 
 
     // append svg element to the body of the page
     var svg = d3.select("body").append("svg")
-	   	// set the id, dimensions and position of the svg element 	
-	    .append("g")
-	    .attr("id", "container");
+      .attr("id", "svg1")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("id", "container")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
 
 
     // Get the data and filter for top 5 most trafficked species
@@ -42,38 +46,86 @@
     d3.dsv(",", pathToCsv, function (d) {
       return {
         // format data attributes if required
+        species: d.species, 
+        count: +d.count 
       }
     }).then(function (data) {
       console.log(data); // you should see the data in your browser's developer tools console 
       
+      var top5 = data.sort((a, b) => d3.descending(a.count, b.count)).slice(0, 5);
       /* Create bar plot using data from csv */
 
+      
       // set the domains of X and Y scales based on data
-      x.domain();
-      y.domain();
+      x.domain([0, d3.max(top5, function(d) { return d.count; })]);
+      y.domain(top5.map(function(d) { return d.species; }).reverse());  // Reverse the order for Y axis
 
       // Add bars to svg - create new elements based on your data
-      svg.selectAll()
-
+      svg.append("g").attr("id", "bars")
+        .selectAll(".bar")
+        .data(top5)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("y", function(d) { return y(d.species); })
+        .attr("height", y.bandwidth())
+        .attr("x", 0)
+        .attr("width", function(d) { return x(d.count); })
+        .attr("fill", function(d, i) {
+          const colors = ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e"];
+          return colors[i];
+        });
 
       // Add the X Axis
-      svg.append()
+      svg.append("g")
+      .attr("id", "x_axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format("d")).tickSizeOuter(0));
 
       // Add the text label for X Axis
-      svg.append()
+      svg.append("text")
+        .attr("id", "x_axis_label")
+        .attr("x", width / 2)
+        .attr("y", height + margin.bottom - 10)
+        .style("text-anchor", "middle")
+        .text("Count");
 
       // Add the Y Axis
-      svg.append()
+      svg.append("g")
+        .attr("id", "y_axis")
+        .call(d3.axisLeft(y));
 
       // Add the text label for Y axis
-      svg.append()
+      svg.append("text")
+        .attr("id", "y_axis_label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -margin.left + 20)
+        .style("text-anchor", "middle")
+        .text("Species");
 
       // Add GT username
-      svg.append()
+      svg.append("text")
+        .attr("id", "credit")
+        .attr("x", width)
+        .attr("y", height + margin.bottom)
+        .style("text-anchor", "end")
+        .attr("fill", "Blue")
+        .text("Amerhoke3");
+
 
       // Add Title
-      svg.append()
+      svg.append("text")
+        .attr("id", "title")
+        .attr("x", width / 2)
+        .attr("y", -margin.top / 2)
+        .style("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .text("Wildlife Trafficking Incidents per Species (2015 to 2023)");
 
+      // Debugging: Log bar positions to check for overlap
+      console.log(top5.map(d => y(d.species))); 
+      console.log("Bandwidth: " + y.bandwidth());
 
     }).catch(function (error) {
       console.log(error);
