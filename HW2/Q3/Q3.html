@@ -1,13 +1,157 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Line Charts</title>
-  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+  <style>
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
 
-  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+    .axis-label {
+      font-size: 12px;
+    }
 
+    .chart-title {
+      text-anchor: middle;
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .legend {
+      font-size: 12px;
+    }
+
+    .symbol-text {
+      font-size: 10px;
+    }
+  </style>
 </head>
 
 <body>
-  <div id='signature'>gburdell3</div>
+  <div id="chart1"></div>
+  <div id="chart2"></div>
+
+  <script>
+    // Define dimensions and margins
+    const margin = { top: 20, right: 100, bottom: 50, left: 50 },
+      width = 800 - margin.left - margin.right,
+      height = 400 - margin.top - margin.bottom;
+
+    // Parse the date
+    const parseTime = d3.timeParse("%Y-%m-%d");
+
+    // Create SVGs for each chart
+    const svg1 = d3.select("#chart1")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const svg2 = d3.select("#chart2")
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Load data
+    d3.csv("boardgame_ratings.csv").then(function (data) {
+      // Prepare the data
+      data.forEach(d => {
+        d.date = parseTime(d.date);
+        d['Catan=count'] = +d['Catan=count'];
+        d['Catan=rank'] = +d['Catan=rank'];
+        // Add other games similarly...
+      });
+
+      // Set up scales
+      const x = d3.scaleTime()
+        .domain(d3.extent(data, d => d.date))
+        .range([0, width]);
+
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d['Catan=count'])]) // Adjust based on game data
+        .range([height, 0]);
+
+      // Define line generator for count
+      const lineCount = d3.line()
+        .x(d => x(d.date))
+        .y(d => y(d['Catan=count'])); // Change for each game
+
+      // Add X axis
+      svg1.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x).ticks(d3.timeMonth.every(3)).tickFormat(d3.timeFormat("%b %y")));
+
+      // Add Y axis
+      svg1.append("g")
+        .call(d3.axisLeft(y));
+
+      // Add line for Catan
+      svg1.append("path")
+        .datum(data)
+        .attr("class", "line")
+        .attr("d", lineCount)
+        .attr("stroke", d3.schemeCategory10[0]);
+
+      // Add labels for Catan
+      svg1.append("text")
+        .datum(data[data.length - 1])
+        .attr("transform", d => `translate(${x(d.date)},${y(d['Catan=count'])})`)
+        .attr("x", 5)
+        .attr("dy", ".35em")
+        .style("font-size", "10px")
+        .text("Catan");
+
+      // Add Chart Title
+      svg1.append("text")
+        .attr("x", width / 2)
+        .attr("y", 0 - margin.top / 2)
+        .attr("class", "chart-title")
+        .text("Number of Ratings 2016-2020");
+
+      // Chart 2: Rankings
+      const y2 = d3.scaleLinear()
+        .domain([d3.max(data, d => d['Catan=rank']), 0])
+        .range([height, 0]);
+
+      const lineRank = d3.line()
+        .x(d => x(d.date))
+        .y(d => y2(d['Catan=rank']));
+
+      // Add X axis
+      svg2.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x).ticks(d3.timeMonth.every(3)).tickFormat(d3.timeFormat("%b %y")));
+
+      // Add Y axis
+      svg2.append("g")
+        .call(d3.axisLeft(y2));
+
+      // Add line for Catan Rankings
+      svg2.append("path")
+        .datum(data)
+        .attr("class", "line")
+        .attr("d", lineRank)
+        .attr("stroke", d3.schemeCategory10[0]);
+
+      // Add symbols for rankings
+      svg2.selectAll(".symbol")
+        .data(data.filter((d, i) => i % 3 === 0))  // Show symbol every 3 months
+        .enter().append("text")
+        .attr("x", d => x(d.date))
+        .attr("y", d => y2(d['Catan=rank']))
+        .attr("dy", "-0.5em")
+        .attr("class", "symbol-text")
+        .text(d => d['Catan=rank']);
+    });
+  </script>
 </body>
+
+</html>
