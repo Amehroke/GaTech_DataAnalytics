@@ -1,141 +1,190 @@
 <!DOCTYPE html>
 <head>
-<style>
+    <style>
 
-path.link {
-  fill: none;
-  stroke: #666;
-  stroke-width: 1.5px;
-}
+        path.link {
+        fill: none;
+        stroke: #666;
+        stroke-width: 1.5px;
+        }
 
-circle {
-  fill: #ccc;
-  stroke: #fff;
-  stroke: black;
-  stroke-width: 1.5px;
-}
+        circle {
+        fill: #ccc;
+        stroke: #fff;
+        stroke: black;
+        stroke-width: 1.5px;
+        }
 
-text {
-  fill: #000;
-  font: 10px sans-serif;
-  pointer-events: none;
-}
+        text {
+        fill: #000;
+        font: 10px sans-serif;
+        pointer-events: none;
+        }
 
-</style>
-<meta charset="utf-8">
-<title></title>
+        .node text {
+        font-weight: bold;
+        font-size: 12px;
+        }
+
+
+    </style>
+    <meta charset="utf-8">
+    <title></title>
 </head>
 
 <body>
-<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
-<script>
+    <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+    <script>
 
-d3.dsv(",", "board_games.csv", function(d) {
-  return {
+    d3.dsv(",", "board_games.csv", function(d) {
+    return {
     source: d.source,
     target: d.target,
     value: +d.value
-  }
-}).then(function(data) {
+    }
+    }).then(function(data) {
 
-  var links = data;
+    var links = data;
 
-  var nodes = {};
+    var nodes = {};
 
-  // compute the distinct nodes from the links.
-  links.forEach(function(link) {
-      link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
-      link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
-  });
+    // compute the distinct nodes from the links.
+    links.forEach(function(link) {
+        link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
+        link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
+    });
 
-  var width = 1200,
-      height = 700;
+    var width = 1200,
+        height = 700;
 
-  var force = d3.forceSimulation()
-      .nodes(d3.values(nodes))
-      .force("link", d3.forceLink(links).distance(100))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force("x", d3.forceX())
-      .force("y", d3.forceY())
-      .force("charge", d3.forceManyBody().strength(-250))
-      .alphaTarget(1)
-      .on("tick", tick);
+    var force = d3.forceSimulation()
+        .nodes(d3.values(nodes))
+        .force("link", d3.forceLink(links).distance(100))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force("x", d3.forceX())
+        .force("y", d3.forceY())
+        .force("charge", d3.forceManyBody().strength(-250))
+        .alphaTarget(1)
+        .on("tick", tick);
 
-  var svg = d3.select("body").append("svg")
-      .attr("width", width)
-      .attr("height", height);
+    var svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height);
 
-  // add the links
-  var path = svg.append("g")
-      .selectAll("path")
-      .data(links)
-      .enter()
-      .append("path")
-      .attr("class", function(d) { return "link " + d.type; });
+    // add the links
+    var path = svg.append("g")
+        .selectAll("path")
+        .data(links)
+        .enter()
+        .append("path")
+        .attr("class", function(d) { return "link " + d.type; })
+        .style("stroke", function(d) { return d.value === 0 ? "gray" : "green";})
+        .style("stroke-width", function(d) {return d.value === 0 ? "4px" : "1px";})
+        .style("stroke-dasharray", function(d) {return d.value === 0 ? "none" : "5,5";});
 
-  // define the nodes
-  var node = svg.selectAll(".node")
-      .data(force.nodes())
-      .enter().append("g")
-      .attr("class", "node")
-      .call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
 
-  // add the nodes
-  node.append("circle")
-      .attr("id", function(d){
-         return (d.name.replace(/\s+/g,'').toLowerCase());
-      })
-      .attr("r", 5);
+    // define the nodes
+    var node = svg.selectAll(".node")
+        .data(force.nodes())
+        .enter().append("g")
+        .attr("class", "node")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended))
+        .on("dblclick", function(event, d) { // Double click to unpin
+            // Unpin on double-click
+            d.fx = null;
+            d.fy = null;
+            d3.select(this).select("circle").style("fill", function(d) {
+                return colorScale(nodeDegrees[d.name]); // Restore original color
+            });
+        
+        });
+    //Calculate node degree
+    var nodeDegrees = {};
 
-  // add the curvy lines
-  function tick() {
-      path.attr("d", function(d) {
-          var dx = d.target.x - d.source.x,
-              dy = d.target.y - d.source.y,
-              dr = Math.sqrt(dx * dx + dy * dy);
-          return "M" +
-              d.source.x + "," +
-              d.source.y + "A" +
-              dr + "," + dr + " 0 0,1 " +
-              d.target.x + "," +
-              d.target.y;
-      });
+    links.forEach(function(link) {
+        nodeDegrees[link.source.name] = (nodeDegrees[link.source.name] || 0) + 1;
+        nodeDegrees[link.target.name] = (nodeDegrees[link.target.name] || 0) + 1;
+    });
 
-      node.attr("transform", function(d) {
-          return "translate(" + d.x + "," + d.y + ")"; 
-      });
-  };
+    //Create a scale for the node radius based on degree
+    var radiusScale = d3.scaleLinear()
+        .domain([d3.min(Object.values(nodeDegrees)), d3.max(Object.values(nodeDegrees))]) // input: min and max degree
+        .range([5, 20]); // output: min and max radius size
 
-  function dragstarted(d) {
-      if (!d3.event.active) force.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
-  };
+    // Create a scale for node colors based on degree
+    var colorScale = d3.scaleSequential(d3.interpolateBlues)
+        .domain([d3.min(Object.values(nodeDegrees)), d3.max(Object.values(nodeDegrees))]);
 
-  function dragged(d) {
-      d.fx = d3.event.x;
-      d.fy = d3.event.y;
-  };
+    // add the nodes
+    node.append("circle")
+        .attr("id", function(d){
+            return (d.name.replace(/\s+/g,'').toLowerCase());
+        })
+        .attr("r", function(d) {
+            return radiusScale(nodeDegrees[d.name]); // scale radius based on node degree
+        })
+        .style("fill", function(d) {
+            return colorScale(nodeDegrees[d.name]); // color based on degree using color scale
+        });
 
-  function dragended(d) {
-      if (!d3.event.active) force.alphaTarget(0);
-      if (d.fixed == true) {
-          d.fx = d.x;
-          d.fy = d.y;
-      }
-      else {
-          d.fx = null;
-          d.fy = null;
-      }
-  };
-  
-}).catch(function(error) {
-  console.log(error);
-});
+    node.append("text")
+        .attr("x", 10)
+        .attr("y", "-5")
+        .text(function(d) { return d.name; })
+        .attr("class", "nodetext");
 
-</script>
+    // add the curvy lines
+    function tick() {
+        path.attr("d", function(d) {
+            var dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                dr = Math.sqrt(dx * dx + dy * dy);
+            return "M" +
+                d.source.x + "," +
+                d.source.y + "A" +
+                dr + "," + dr + " 0 0,1 " +
+                d.target.x + "," +
+                d.target.y;
+        });
+
+        node.attr("transform", function(d) {
+            return "translate(" + d.x + "," + d.y + ")"; 
+        });
+    };
+
+    function dragstarted(d) {
+        if (!event.active) force.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+        d3.select(this).select("circle").style("fill", "red"); // Mark as pinned
+
+    };
+
+    function dragged(d) {
+        d.fx = d3.event.x;
+        d.fy = d3.event.y;
+    };
+
+
+    function dragended(d) {
+        if (!d3.event.active) force.alphaTarget(0);
+        if (d.fixed == true) {
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        else {
+            d.fx = null;
+            d.fy = null;
+        }
+    };
+
+    }).catch(function(error) {
+    console.log(error);
+    });
+
+    </script>
 </body>
 </html>
