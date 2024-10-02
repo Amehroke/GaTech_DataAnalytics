@@ -26,13 +26,20 @@
         font-size: 12px;
         }
 
+        #credit {
+            font: 35px sans-serif;
+            float: right; 
+        } 
+        
+
 
     </style>
     <meta charset="utf-8">
-    <title></title>
+    <title>Force-directed graph layout</title>
 </head>
 
 <body>
+    <text id="credit">Amerhoke3</text>
     <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
     <script>
 
@@ -82,6 +89,14 @@
         .style("stroke-width", function(d) {return d.value === 0 ? "4px" : "1px";})
         .style("stroke-dasharray", function(d) {return d.value === 0 ? "none" : "5,5";});
 
+    // Double click to unpin
+    function dblclicked(d) {
+        d.fx = null;
+        d.fy = null;
+        d3.select(this).select("circle").style("fill", function(d) {
+            return colorScale(nodeDegrees[d.name]); // Restore original color
+        });
+    }
 
     // define the nodes
     var node = svg.selectAll(".node")
@@ -92,15 +107,8 @@
             .on("start", dragstarted)
             .on("drag", dragged)
             .on("end", dragended))
-        .on("dblclick", function(event, d) { // Double click to unpin
-            // Unpin on double-click
-            d.fx = null;
-            d.fy = null;
-            d3.select(this).select("circle").style("fill", function(d) {
-                return colorScale(nodeDegrees[d.name]); // Restore original color
-            });
-        
-        });
+        .on("dblclick", dblclicked);
+
     //Calculate node degree
     var nodeDegrees = {};
 
@@ -156,7 +164,7 @@
     };
 
     function dragstarted(d) {
-        if (!event.active) force.alphaTarget(0.3).restart();
+        if (!d3.event.active) force.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
         d3.select(this).select("circle").style("fill", "red"); // Mark as pinned
@@ -171,14 +179,6 @@
 
     function dragended(d) {
         if (!d3.event.active) force.alphaTarget(0);
-        if (d.fixed == true) {
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-        else {
-            d.fx = null;
-            d.fy = null;
-        }
     };
 
     }).catch(function(error) {
