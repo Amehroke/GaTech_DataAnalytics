@@ -7,7 +7,7 @@
     <title>Choropleth Map of Board Game Ratings</title>
     <script src="/lib/d3.v5.min.js"></script>
     <script src="/lib/d3-legend.min.js"></script>
-    <script src="/lib/d3-tip.min.js"></script>
+    <script src="/lib/d3-tip.min.js"></script> <!-- Include d3-tip -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -47,14 +47,17 @@
     <div class="map-container">
         <h1>Choropleth Map of Board Game Ratings</h1>
 
+        <!-- Dropdown for selecting games -->
         <label for="gameDropdown">Select a Game:</label>
         <select id="gameDropdown"></select>
         
+        <!-- Choropleth map -->
         <svg id="choropleth">
-            <g id="countries"></g>
-            <g id="legend"></g>
+            <g id="countries"></g> <!-- Paths for each country will go here -->
+            <g id="legend"></g> <!-- Legend element -->
         </svg>
         
+        <!-- Tooltip container -->
         <div id="tooltip" class="tooltip"></div>
 
         <div class="username">Amehroke3</div>
@@ -72,6 +75,7 @@
 
         const path = d3.geoPath().projection(projection);
 
+        // Initialize tooltip using d3-tip
         const tip = d3.tip()
             .attr('class', 'd3-tip')
             .offset([-10, 0])
@@ -91,9 +95,11 @@
         let countryUserCounts = {};
         let selectedGame = "";
 
+        // Use quantile scale for 4 color gradations
         const color = d3.scaleQuantile()
-            .range(d3.schemeBlues[4]); 
+            .range(d3.schemeBlues[4]);
 
+        // Load data and world map
         Promise.all([
             d3.json("world_countries.json"),
             d3.csv("ratings-by-country.csv")
@@ -111,8 +117,11 @@
             function updateMap(selectedGame) {
                 const gameData = ratingsData.filter(d => d.Game === selectedGame);
 
+                // Get all the ratings for the selected game
                 const ratings = gameData.map(d => +d['Average Rating']);
-                color.domain(d3.extent(ratings)); 
+                
+                // Dynamically update the color domain based on the quartile values for the selected game
+                color.domain(ratings);  // Quantile automatically divides into quartiles
 
                 countryRatings = {};
                 countryUserCounts = {};
@@ -125,22 +134,24 @@
                 const paths = mapSvg.select("#countries").selectAll("path")
                     .data(worldData.features);
 
+                // Enter + Update
                 paths.enter()
                     .append("path")
                     .attr("d", path)
                     .merge(paths)
                     .attr("fill", d => {
                         const rating = countryRatings[d.properties.name];
-                        return rating ? color(rating) : "#ccc";
+                        return rating ? color(rating) : "#ccc"; // Assign gray color if no data
                     })
                     .on("mouseover", tip.show)
                     .on("mouseout", tip.hide);
 
                 paths.exit().remove();
 
+                // Update the legend to reflect the quartiles
                 const legend = d3.legendColor()
                     .scale(color)
-                    .labelFormat(d3.format(".2f"))
+                    .labelFormat(d3.format(".2f")) // Format for quartile labels
                     .title("Average Rating")
                     .labels(d3.legendHelpers.thresholdLabels)
                     .shapeWidth(30)
@@ -151,11 +162,11 @@
 
             dropdown.on("change", function () {
                 selectedGame = this.value;
-                updateMap(selectedGame);
+                updateMap(selectedGame);  // Update map based on selected game
             });
 
-            selectedGame = games[0];
-            updateMap(selectedGame);
+            selectedGame = games[0];  // Set initial selected game
+            updateMap(selectedGame);   // Initialize map with default game
         });
     </script>
 </body>
