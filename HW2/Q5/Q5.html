@@ -7,7 +7,7 @@
     <title>Choropleth Map of Board Game Ratings</title>
     <script src="/lib/d3.v5.min.js"></script>
     <script src="/lib/d3-legend.min.js"></script>
-    <script src="/lib/d3-tip.min.js"></script> <!-- Include d3-tip -->
+    <script src="/lib/d3-tip.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -148,12 +148,21 @@
 
                 paths.exit().remove();
 
+                // Calculate quartile boundaries using d3.quantiles
+                const quartiles = color.quantiles();  // Get quartiles from quantile scale
+
+                // Create a function to generate the labels based on quartiles
+                const legendLabels = [d3.min(ratings), ...quartiles].map((d, i) => {
+                    const next = quartiles[i] || d3.max(ratings);
+                    return `${d.toFixed(2)} - ${next.toFixed(2)}`;
+                });
+
                 // Update the legend to reflect the quartiles
                 const legend = d3.legendColor()
                     .scale(color)
+                    .labels(legendLabels)  // Use custom labels for legend
                     .labelFormat(d3.format(".2f")) // Format for quartile labels
                     .title("Average Rating")
-                    .labels(d3.legendHelpers.thresholdLabels)
                     .shapeWidth(30)
                     .orient("vertical");
 
