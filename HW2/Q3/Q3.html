@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Board Game Ratings Line Charts with Rankings</title>
-    <script src="/lib/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -34,23 +34,25 @@
 
     <!-- First Chart: Line Chart (No Rankings) -->
     <div id="chart1">
-        <svg id="svg-a" width="1200" height="400"></svg>
+        <svg id="svg-a"></svg>
     </div>
 
     <!-- Second Chart: Line Chart with Rankings -->
     <div id="chart2">
-        <svg id="svg-b" width="1200" height="400"></svg>
+        <svg id="svg-b"></svg>
     </div>
 
     <!-- Third Chart: Square Root Scale with Rankings -->
     <div id="chart3">
-        <svg id="svg-c1" width="1200" height="400"></svg>
+        <svg id="svg-c1"></svg>
     </div>
 
     <!-- Fourth Chart: Log Scale with Rankings -->
     <div id="chart4">
-        <svg id="svg-c2" width="1200" height="400"></svg>
+        <svg id="svg-c2"></svg>
     </div>
+
+    <div id="signature">Amehroke3</div>
 
     <script>
         // Margin convention for all charts
@@ -70,29 +72,31 @@
                 return date >= parseDate("2016-11-01") && date <= parseDate("2020-08-01");
             });
 
-            // Process the data
+            // Process the data and ensure numeric values are valid numbers
             filteredData.forEach(d => {
                 d.date = parseDate(d.date);
+                Object.keys(d).forEach(key => {
+                    if (key !== 'date') {
+                        d[key] = +d[key];
+                        if (isNaN(d[key])) {
+                            d[key] = 0;
+                        }
+                    }
+                });
             });
 
             const gamesWithRankings = [
                 { name: 'Catan', count: 'Catan=count', rank: 'Catan=rank' },
                 { name: 'Codenames', count: 'Codenames=count', rank: 'Codenames=rank' },
                 { name: 'Terraforming Mars', count: 'Terraforming Mars=count', rank: 'Terraforming Mars=rank' },
-                { name: 'Gloomhaven', count: 'Gloomhaven=count', rank: 'Gloomhaven=rank' }
+                { name: 'Gloomhaven', count: 'Gloomhaven=count', rank: 'Gloomhaven=rank' },
+                { name: 'Dixit', count: 'Dixit=count', rank: 'Dixit=rank' },
+                { name: 'Monopoly', count: 'Monopoly=count', rank: 'Monopoly=rank' },
+                { name: 'Magic: The Gathering', count: 'Magic: The Gathering=count', rank: 'Magic: The Gathering=rank' },
+                { name: 'Dominion', count: 'Dominion=count', rank: 'Dominion=rank' }
             ];
 
-            const gamesWithoutRankings = [
-              { name: 'Catan', count: 'Catan=count' },
-              { name: 'Dominion', count: 'Dominion=count' },
-              { name: 'Codenames', count: 'Codenames=count' },
-              { name: 'Terraforming Mars', count: 'Terraforming Mars=count' },
-              { name: 'Gloomhaven', count: 'Gloomhaven=count' },
-              { name: 'Magic: The Gathering', count: 'Magic: The Gathering=count' },
-              { name: 'Dixit', count: 'Dixit=count' },
-              { name: 'Monopoly', count: 'Monopoly=count' }
-            ];
-
+            const allGames = gamesWithRankings;
 
             // X-axis scale (same for all charts)
             const xScale = d3.scaleTime()
@@ -101,251 +105,114 @@
 
             // Standard Y-axis scale for first and second charts (linear)
             const yScaleLinear = d3.scaleLinear()
-                .domain([0, d3.max(filteredData, d => d3.max(gamesWithRankings.concat(gamesWithoutRankings), game => +d[game.count]))])
+                .domain([0, d3.max(filteredData, d => d3.max(allGames, game => +d[game.count]))])
                 .range([height, 0]);
 
             // Y-axis square root scale for third chart
             const yScaleSqrt = d3.scaleSqrt()
-                .domain([0, d3.max(filteredData, d => d3.max(gamesWithRankings.concat(gamesWithoutRankings), game => +d[game.count]))])
+                .domain([0, d3.max(filteredData, d => d3.max(allGames, game => +d[game.count]))])
                 .range([height, 0]);
 
             // Y-axis log scale for fourth chart
             const yScaleLog = d3.scaleLog()
-                .domain([1, d3.max(filteredData, d => d3.max(gamesWithRankings.concat(gamesWithoutRankings), game => +d[game.count]))])
+                .domain([1, d3.max(filteredData, d => d3.max(allGames, game => +d[game.count]))])
                 .range([height, 0]);
 
             // Line generator (same for all charts)
             const line = d3.line()
                 .x(d => xScale(d.date))
-                .y(d => d.yScale(d.num_ratings));  // We'll pass the correct scale dynamically
+                .y(d => d.yScale(+d.num_ratings));
 
-            // First Chart: Standard Line Chart (No Rankings)
-            const svgA = d3.select("#svg-a")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-              .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
+            // Function to draw chart with given scales and IDs
+            function drawChart(svgId, xAxisId, yAxisId, linesId, yScale, chartTitle) {
+                const svg = d3.select(svgId)
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                    .append("g")
+                    .attr("transform", `translate(${margin.left},${margin.top})`);
 
-            svgA.append("g")
-                .attr("id", "x-axis-a")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(xScale).tickFormat(formatDate).ticks(d3.timeMonth.every(3)));
+                svg.append("text")
+                    .attr("id", `${svgId}-title`)
+                    .attr("x", width / 2)
+                    .attr("y", -margin.top / 2)
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "16px")
+                    .style("text-decoration", "underline")
+                    .text(chartTitle);
 
-            svgA.append("g")
-                .attr("id", "y-axis-a")
-                .call(d3.axisLeft(yScaleLinear));
+                svg.append("g")
+                    .attr("id", xAxisId)
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(xScale).tickFormat(formatDate).ticks(d3.timeMonth.every(3)));
 
-            // Add lines for all games (ranked and unranked) to Chart 1
-            const allGames = gamesWithRankings.concat(gamesWithoutRankings);
-            const gameLinesA = svgA.append("g")
-                .attr("id", "lines-a")
-              .selectAll(".line")
-              .data(allGames)
-              .enter()
-              .append("path")
-                .attr("class", "line")
-                .attr("d", game => line(filteredData.map(d => ({ date: d.date, num_ratings: +d[game.count], yScale: yScaleLinear }))))
-                .attr("stroke", game => d3.schemeCategory10[allGames.indexOf(game)]);
+                svg.append("text")
+                    .attr("id", `${svgId}-x-axis-label`)
+                    .attr("x", width / 2)
+                    .attr("y", height + margin.bottom - 10)
+                    .attr("text-anchor", "middle")
+                    .text("Date (Months)")
+                    .style("font-size", "14px");
 
-            // Add game names at the end of each line in the first chart
-            gameLinesA.each(function(game) {
-                const lastDataPoint = filteredData[filteredData.length - 1];
-                svgA.append("text")
-                    .attr("x", xScale(lastDataPoint.date) + 5)
-                    .attr("y", yScaleLinear(+lastDataPoint[game.count]))
-                    .attr("dy", ".35em")
-                    .text(game.name)
-                    .style("font-size", "12px")
-                    .style("fill", d3.schemeCategory10[allGames.indexOf(game)]);
-            });
+                svg.append("g")
+                    .attr("id", yAxisId)
+                    .call(d3.axisLeft(yScale));
 
-            // Second Chart: Line Chart with Rankings (Linear Scale)
-            const svgB = d3.select("#svg-b")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-              .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
+                svg.append("text")
+                    .attr("id", `${svgId}-y-axis-label`)
+                    .attr("x", -height / 2)
+                    .attr("y", -margin.left + 20)
+                    .attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)")
+                    .text("Number of Ratings")
+                    .style("font-size", "14px");
 
-            svgB.append("g")
-                .attr("id", "x-axis-b")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(xScale).tickFormat(formatDate).ticks(d3.timeMonth.every(3)));
+                const gameLines = svg.append("g")
+                    .attr("id", linesId)
+                    .selectAll(".line")
+                    .data(allGames)
+                    .enter()
+                    .append("path")
+                    .attr("class", "line")
+                    .attr("d", game => line(filteredData.map(d => ({
+                        date: d.date,
+                        num_ratings: +d[game.count] || 0,
+                        yScale: yScale
+                    }))))
+                    .attr("stroke", game => d3.schemeCategory10[allGames.indexOf(game)]);
 
-            svgB.append("g")
-                .attr("id", "y-axis-b")
-                .call(d3.axisLeft(yScaleLinear));
+                gameLines.each(function(game) {
+                    const lastDataPoint = filteredData[filteredData.length - 1];
+                    if (!isNaN(+lastDataPoint[game.count])) {
+                        svg.append("text")
+                            .attr("x", xScale(lastDataPoint.date) + 5)
+                            .attr("y", yScale(+lastDataPoint[game.count]))
+                            .attr("dy", ".35em")
+                            .attr("id", `${svgId}-label-${game.name.toLowerCase().replace(/\s+/g, '-')}`)
+                            .text(game.name)
+                            .style("font-size", "12px")
+                            .style("fill", d3.schemeCategory10[allGames.indexOf(game)]);
+                    }
+                });
 
-            // Add lines for all games to Chart 2
-            const gameLinesB = svgB.append("g")
-                .attr("id", "lines-b")
-              .selectAll(".line")
-              .data(allGames)
-              .enter()
-              .append("path")
-                .attr("class", "line")
-                .attr("d", game => line(filteredData.map(d => ({ date: d.date, num_ratings: +d[game.count], yScale: yScaleLinear }))))
-                .attr("stroke", game => d3.schemeCategory10[allGames.indexOf(game)]);
-
-            // Add symbols and rankings for games with rankings in the second chart
-            const filteredForSymbols = filteredData.filter((d, i) => i % 3 === 0);
-            gamesWithRankings.forEach(game => {
-                svgB.selectAll(`.symbol-${game.name}`)
-                    .data(filteredForSymbols)
+                // Add rank symbols
+                const symbolsGroup = svg.append("g")
+                    .attr("id", `symbols-${svgId.slice(-1)}`)
+                    .selectAll("circle")
+                    .data(filteredData.flatMap(d => allGames.map(game => ({ date: d.date, count: d[game.count], rank: d[game.rank], game: game.name }))))
                     .enter()
                     .append("circle")
-                    .attr("class", `symbol-${game.name}`)
+                    .attr("class", "rank-symbol")
                     .attr("cx", d => xScale(d.date))
-                    .attr("cy", d => yScaleLinear(+d[game.count]))
-                    .attr("r", 10)
-                    .attr("fill", d3.schemeCategory10[gamesWithRankings.indexOf(game)]);
+                    .attr("cy", d => yScale(d.count))
+                    .attr("r", d => d.rank <= 10 ? 5 : 0)
+                    .style("fill", d => d3.schemeCategory10[allGames.findIndex(game => game.name === d.game)]);
+            }
 
-                svgB.selectAll(`.symbol-text-${game.name}`)
-                    .data(filteredForSymbols)
-                    .enter()
-                    .append("text")
-                    .attr("class", `symbol-text-${game.name}`)
-                    .attr("x", d => xScale(d.date))
-                    .attr("y", d => yScaleLinear(+d[game.count]))
-                    .attr("dy", ".35em")
-                    .attr("class", "symbol")
-                    .text(d => d[game.rank]);
-            });
-
-            // Add game names at the end of each line in the second chart
-            gameLinesB.each(function(game) {
-                const lastDataPoint = filteredData[filteredData.length - 1];
-                svgB.append("text")
-                    .attr("x", xScale(lastDataPoint.date) + 5)
-                    .attr("y", yScaleLinear(+lastDataPoint[game.count]))
-                    .attr("dy", ".35em")
-                    .text(game.name)
-                    .style("font-size", "12px")
-                    .style("fill", d3.schemeCategory10[allGames.indexOf(game)]);
-            });
-
-            // Third Chart: Line Chart with Rankings (Square Root Scale)
-            const svgC1 = d3.select("#svg-c1")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-              .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            svgC1.append("g")
-                .attr("id", "x-axis-c1")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(xScale).tickFormat(formatDate).ticks(d3.timeMonth.every(3)));
-
-            svgC1.append("g")
-                .attr("id", "y-axis-c1")
-                .call(d3.axisLeft(yScaleSqrt));
-
-            // Add lines for all games to Chart 3
-            const gameLinesC1 = svgC1.append("g")
-                .attr("id", "lines-c1")
-              .selectAll(".line")
-              .data(allGames)
-              .enter()
-              .append("path")
-                .attr("class", "line")
-                .attr("d", game => line(filteredData.map(d => ({ date: d.date, num_ratings: +d[game.count], yScale: yScaleSqrt }))))
-                .attr("stroke", game => d3.schemeCategory10[allGames.indexOf(game)]);
-
-            // Add symbols and rankings for games with rankings in the third chart
-            gamesWithRankings.forEach(game => {
-                svgC1.selectAll(`.symbol-${game.name}`)
-                    .data(filteredForSymbols)
-                    .enter()
-                    .append("circle")
-                    .attr("class", `symbol-${game.name}`)
-                    .attr("cx", d => xScale(d.date))
-                    .attr("cy", d => yScaleSqrt(+d[game.count]))
-                    .attr("r", 10)
-                    .attr("fill", d3.schemeCategory10[gamesWithRankings.indexOf(game)]);
-
-                svgC1.selectAll(`.symbol-text-${game.name}`)
-                    .data(filteredForSymbols)
-                    .enter()
-                    .append("text")
-                    .attr("class", `symbol-text-${game.name}`)
-                    .attr("x", d => xScale(d.date))
-                    .attr("y", d => yScaleSqrt(+d[game.count]))
-                    .attr("dy", ".35em")
-                    .attr("class", "symbol")
-                    .text(d => d[game.rank]);
-            });
-
-            // Add game names at the end of each line in the third chart
-            gameLinesC1.each(function(game) {
-                const lastDataPoint = filteredData[filteredData.length - 1];
-                svgC1.append("text")
-                    .attr("x", xScale(lastDataPoint.date) + 5)
-                    .attr("y", yScaleSqrt(+lastDataPoint[game.count]))
-                    .attr("dy", ".35em")
-                    .text(game.name)
-                    .style("font-size", "12px")
-                    .style("fill", d3.schemeCategory10[allGames.indexOf(game)]);
-            });
-
-            // Fourth Chart: Line Chart with Rankings (Log Scale)
-            const svgC2 = d3.select("#svg-c2")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-              .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            svgC2.append("g")
-                .attr("id", "x-axis-c2")
-                .attr("transform", `translate(0,${height})`)
-                .call(d3.axisBottom(xScale).tickFormat(formatDate).ticks(d3.timeMonth.every(3)));
-
-            svgC2.append("g")
-                .attr("id", "y-axis-c2")
-                .call(d3.axisLeft(yScaleLog));
-
-            // Add lines for all games to Chart 4
-            const gameLinesC2 = svgC2.append("g")
-                .attr("id", "lines-c2")
-              .selectAll(".line")
-              .data(allGames)
-              .enter()
-              .append("path")
-                .attr("class", "line")
-                .attr("d", game => line(filteredData.map(d => ({ date: d.date, num_ratings: +d[game.count], yScale: yScaleLog }))))
-                .attr("stroke", game => d3.schemeCategory10[allGames.indexOf(game)]);
-
-                gamesWithRankings.forEach(game => {
-                  svgC2.selectAll(`.symbol-${game.name}`)
-                      .data(filteredForSymbols)
-                      .enter()
-                      .append("circle")
-                      .attr("class", `symbol-${game.name}`)
-                      .attr("cx", d => xScale(d.date))
-                      .attr("cy", d => yScaleLog(+d[game.count]))
-                      .attr("r", 10)
-                      .attr("fill", d3.schemeCategory10[gamesWithRankings.indexOf(game)]);
-  
-                  svgC2.selectAll(`.symbol-text-${game.name}`)
-                      .data(filteredForSymbols)
-                      .enter()
-                      .append("text")
-                      .attr("class", `symbol-text-${game.name}`)
-                      .attr("x", d => xScale(d.date))
-                      .attr("y", d => yScaleLog(+d[game.count]))
-                      .attr("dy", ".35em")
-                      .attr("class", "symbol")
-                      .text(d => d[game.rank]);
-              });
-            // Add game names at the end of each line in the fourth chart
-            gameLinesC2.each(function(game) {
-                const lastDataPoint = filteredData[filteredData.length - 1];
-                svgC2.append("text")
-                    .attr("x", xScale(lastDataPoint.date) + 5)
-                    .attr("y", yScaleLog(+lastDataPoint[game.count]))
-                    .attr("dy", ".35em")
-                    .text(game.name)
-                    .style("font-size", "12px")
-                    .style("fill", d3.schemeCategory10[allGames.indexOf(game)]);
-            });
+            // Draw all charts
+            drawChart("#svg-a", "x-axis-a", "y-axis-a", "lines-a", yScaleLinear, "Number of Ratings 2016-2020");
+            drawChart("#svg-b", "x-axis-b", "y-axis-b", "lines-b", yScaleLinear, "Number of Ratings 2016-2020 with Rankings");
+            drawChart("#svg-c1", "x-axis-c1", "y-axis-c1", "lines-c1", yScaleSqrt, "Number of Ratings 2016-2020 (Square root Scale)");
+            drawChart("#svg-c2", "x-axis-c2", "y-axis-c2", "lines-c2", yScaleLog, "Number of Ratings 2016-2020 (Log Scale)");
 
         }).catch(error => console.error('Error loading the data: ', error));
     </script>
